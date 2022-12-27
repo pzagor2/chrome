@@ -1,5 +1,6 @@
 import { mkdir } from 'fs/promises';
 import path from 'path';
+import fs from 'fs';
 
 import { noop } from 'lodash';
 import { Page } from 'puppeteer';
@@ -58,14 +59,18 @@ export const after = async ({
     return done();
   }
 
-  return res.sendFile(filePath, (err: Error) => {
-    const message = err
-      ? `Error streaming file back ${err}`
-      : `File sent successfully`;
+  const fileStream = fs.createReadStream(filePath);
+  res.setHeader('Content-Type', 'video/webm');
 
-    debug(message);
-    rimraf(filePath, noop);
-
+  fileStream.on('error', function (err) {
+    debug(`Error streaming file back ${err}`);
     done(err);
   });
+
+  fileStream.on('finish', function () {
+    debug('File sent successfully');
+    done(null);
+  });
+
+  return fileStream.pipe(res);
 };
