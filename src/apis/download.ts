@@ -28,11 +28,13 @@ export const after = async ({
   downloadPath,
   debug,
   res,
+  req,
   done,
 }: {
   downloadPath: string;
   debug: (...args: string[]) => any;
   res: any;
+  req: any;
   done: (errBack?: Error | null) => any;
 }) => {
   debug(`Waiting for download to finish in ${downloadPath}`);
@@ -59,18 +61,27 @@ export const after = async ({
     return done();
   }
 
-  const fileStream = fs.createReadStream(filePath);
-  res.setHeader('Content-Type', 'video/webm');
+  if (req.header('Transfer-Encoding') === 'chunked') {
+    const fileStream = fs.createReadStream(filePath);
+    res.setHeader('Content-Type', 'video/webm');
+    fileStream.on('error', function (err) {
+      debug(`Error streaming file back ${err}`);
+      done(err);
+    });
 
-  fileStream.on('error', function (err) {
-    debug(`Error streaming file back ${err}`);
-    done(err);
-  });
+    fileStream.on('finish', function () {
+      debug('File sent successfully');
+      done(null);
+    });
+    return fileStream.pipe(res);
+  } else {
+    return res.sendFile(filePath, (err: Error) => {
+      const message = err
+        ? `Error streaming file back ${err}`
+        : `File sent successfully`;
 
-  fileStream.on('finish', function () {
-    debug('File sent successfully');
-    done(null);
-  });
-
-  return fileStream.pipe(res);
+      debug(message);
+      rimraf(filePath, noop);
+    });
+  }
 };

@@ -174,6 +174,7 @@ export const after = async ({
   downloadPath,
   debug,
   res,
+  req,
   done,
 }: {
   code: string;
@@ -181,11 +182,12 @@ export const after = async ({
   downloadPath: string;
   debug: (...args: string[]) => any;
   res: any;
+  req: any;
   done: (errBack?: Error | null) => any;
 }) => {
   if (!code.includes('stopScreencast')) {
     await stopScreencast();
   }
 
-  return downloadAfter({ downloadPath, debug, res, done });
+  return downloadAfter({ downloadPath, debug, res, req, done });
 };
